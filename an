@@ -1,6 +1,5 @@
 local MODE="anticrack"
--- Headless Dalgona controls. MODE is supplied by the hub build.
--- Uses the validated native Dalgona frame; no remote hooks or input injection.
+-- Headless Dalgona anti-crack. Uses the validated native Dalgona frame.
 assert(type(getconnections)=="function" and debug and type(debug.getupvalues)=="function"
     and type(debug.setupvalue)=="function" and type(debug.info)=="function",
     "Dalgona requires connection and upvalue APIs supported by this executor")
@@ -101,9 +100,10 @@ if not M or M.Destroyed then
         end
     end
     function M:Step()
-        if not (enabled("auto") or enabled("lighter") or enabled("anticrack")) or not active() then
-            if self.Context or self.LighterSet then self:DropContext() end
-            for _,c in pairs(self.Controllers) do if c.Enabled then c.Status="Waiting for Dalgona" end end
+        if not enabled("anticrack") or not active() then
+            if self.Context then self:DropContext() end
+            local c=self.Controllers.anticrack
+            if c and c.Enabled then c.Status="Waiting for Dalgona" end
             return
         end
         if not valid(self.Context) then
@@ -113,37 +113,15 @@ if not M or M.Destroyed then
         end
         local context=self.Context
         if not context then
-            for _,c in pairs(self.Controllers) do if c.Enabled then c.Status="Waiting for native cookie controller" end end
+            local c=self.Controllers.anticrack
+            if c and c.Enabled then c.Status="Waiting for native cookie controller" end
             return
         end
         local u=debug.getupvalues(context.Function)
-        if enabled("anticrack") then
-            if not context.GuardOwned then context.OriginalGuard=u[I.Guard];context.GuardOwned=true end
-            write(context,I.Guard,true)
-            if context.Fear and context.Fear.Value~=0 then context.Fear.Value=0 end
-            self.Controllers.anticrack.Status="Wrong-click protection · "..context.Shape
-        else releaseGuard(context) end
-        if enabled("lighter") then
-            if not self.LighterSet then
-                self.OriginalLighter=LP:GetAttribute("HasLighter");self.LighterSet=true
-                context.LighterOwned=not u[I.LighterReady] and self.OriginalLighter~=true
-                LP:SetAttribute("HasLighter",true)
-            end
-            self.Controllers.lighter.Status=u[I.LighterReady] and "Native lighter ready · hold to use" or "Enabling native lighter"
-        elseif self.LighterSet then releaseLighter(context) end
-        if enabled("auto") then
-            local c=self.Controllers.auto
-            local remaining=workspace:GetAttribute("CurrentGameTime")
-            if u[I.Finishing] or u[I.Completed] then
-                c.Status=context.AutoSubmitted and "Native completion triggered · awaiting server result" or "Cookie already finished"
-            elseif type(remaining)=="number" and remaining<=0 then
-                c.Status="Dalgona timer ended"
-            elseif not context.AutoSubmitted and os.clock()-context.BoundAt>=.35 then
-                write(context,I.Progress,u[I.Total])
-                context.AutoSubmitted=true;c.Requests+=1
-                c.Status="Completing "..context.Shape
-            end
-        end
+        if not context.GuardOwned then context.OriginalGuard=u[I.Guard];context.GuardOwned=true end
+        write(context,I.Guard,true)
+        if context.Fear and context.Fear.Value~=0 then context.Fear.Value=0 end
+        self.Controllers.anticrack.Status="Wrong-click protection · "..context.Shape
     end
     local elapsed=0
     M.Connection=RunService.Heartbeat:Connect(function(dt)
@@ -167,7 +145,6 @@ if not M or M.Destroyed then
             self.Enabled=value==true
             if not self.Enabled then
                 if mode=="anticrack" then releaseGuard(M.Context) end
-                if mode=="lighter" then releaseLighter(M.Context) end
                 self.Status="Off"
             else self.Status="Waiting for Dalgona";M.NextScan=0;M:Step() end
         end
